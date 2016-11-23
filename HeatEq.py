@@ -14,7 +14,7 @@ def one(a):
 	return 1
 
 class HeatEq:
-	def __init__(self,a=1.0,x1=0.0,x2=1.0,t2=1.0,t_pts=100,x_pts=100,f=dummy,phi=constant,alpha=one,beta=one):
+	def __init__(self,a=1.0,x1=0.0,x2=1.0,t2=1.0,t_pts=100,x_pts=100,f=dummy,phi=constant,alpha=one,beta=one,type_alpha=1,type_beta=1):
 		self.a=a
 		self.phi=phi
 		self.x1=x1
@@ -27,6 +27,14 @@ class HeatEq:
 		self.dt=t2/t_pts
 		self.alpha=alpha
 		self.beta=beta
+		if ((type_beta==1) or (type_beta==2)):
+			self.type_beta=type_beta
+		else:
+			raise Exception("Type of condition unknown")
+		if ((type_alpha==1) or (type_alpha==2)):
+			self.type_alpha=type_alpha
+		else:
+			raise Exception("Type of condition unknown")
 
 	def solve(self,sigma):
 		self.solution=np.zeros((self.t_pts,self.x_pts))
@@ -41,8 +49,16 @@ class HeatEq:
 		for j in xrange(1,self.t_pts):
 			self.A[0,0]=1
 			self.A[-1,-1]=1
-			self.b[0]=self.alpha(self.dt*j)
-			self.b[-1]=self.beta(self.dt*j)
+			if (self.type_alpha==1):
+				self.b[0]=self.alpha(self.dt*j)
+			else:
+				self.A[0,1]=-1
+				self.b[0]=self.alpha(self.dt*j)*self.dx
+			if (self.type_beta==1):
+				self.b[-1]=self.beta(self.dt*j)
+			else:
+				self.A[-1,-2]=-1
+				self.b[-1]=self.beta(self.dt*j)*self.dx
 			for i in xrange(1,self.x_pts-1):
 				self.A[i,i-1]=-coef
 				self.A[i,i]=1+2*coef
@@ -60,18 +76,22 @@ class HeatEq:
 		xs = [self.x1 + i*self.dx for i in range(self.x_pts)]
 		fig, ax = plt.subplots()
 		line, = ax.plot(xs, self.solution[0])
-		anm = ani.FuncAnimation(fig, _graph_animate, frames=self.t_pts, interval=50000.0/self.t_pts, repeat=True)
+		anm = ani.FuncAnimation(fig, _graph_animate, frames=self.t_pts, interval=50000.0/self.t_pts, repeat=False)
 		plt.show()
 
 
 a=1.0
 x1=0.0
 x2=10.0
-t2=8000.0
+t2=80.0
 t_pts=1000
 x_pts=100
+t_a=2
+t_b=1
+
 def phi(x):
-	return x/10 + np.math.exp(-(x-(x2-x1)/2)**2)
-heatEq=HeatEq(a=a,x1=x1,x2=x2,t2=t2,t_pts=t_pts,x_pts=x_pts,phi=phi)
+	return np.math.exp(-(x-(x2-x1)/2)**2)
+
+heatEq=HeatEq(a=a,x1=x1,x2=x2,t2=t2,t_pts=t_pts,x_pts=x_pts,phi=constant,type_alpha=t_a,type_beta=t_b,alpha=np.sin,beta=one)
 heatEq.solve(sigma=1.0/2)
 heatEq.show()
